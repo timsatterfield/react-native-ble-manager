@@ -22,5 +22,8 @@
   "author": {
     "name": "Innove",
     "url": "https://github.com/innoveit"
+  },
+  "dependencies": {
+    "react-native": "0.52.0"
   }
 }
