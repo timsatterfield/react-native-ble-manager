@@ -38,6 +38,7 @@ public class Peripheral extends BluetoothGattCallback {
 	private byte[] advertisingData;
 	private int advertisingRSSI;
 	private boolean connected = false;
+	private boolean autoReconnect = false;
 	private ReactContext reactContext;
 
 	private BluetoothGatt gatt;
@@ -79,11 +80,12 @@ public class Peripheral extends BluetoothGattCallback {
 		Log.d(BleManager.LOG_TAG, "Peripheral event (" + eventName + "):" + device.getAddress());
 	}
 
-	public void connect(Callback callback, Activity activity) {
+	public void connect(Callback callback, Boolean autoReconnect, Activity activity) {
 		if (!connected) {
 			BluetoothDevice device = getDevice();
 			this.connectCallback = callback;
-			gatt = device.connectGatt(activity, false, this);
+			this.autoReconnect = autoReconnect;
+			gatt = device.connectGatt(activity, autoReconnect, this);
 		} else {
 			if (gatt != null) {
 				callback.invoke();
@@ -230,6 +232,8 @@ public class Peripheral extends BluetoothGattCallback {
 
 		Log.d(BleManager.LOG_TAG, "onConnectionStateChange to " + newState + " on peripheral: " + device.getAddress() + " with status" + status);
 
+		super.onConnectionStateChange(gatt, status, newState);
+
 		this.gatt = gatt;
 
 		if (newState == BluetoothGatt.STATE_CONNECTED) {
@@ -249,7 +253,7 @@ public class Peripheral extends BluetoothGattCallback {
 			if (connected) {
 				connected = false;
 
-				if (gatt != null) {
+				if (gatt != null && !this.autoReconnect) {
 					gatt.disconnect();
 					gatt.close();
 					this.gatt = null;
