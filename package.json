@@ -23,7 +23,7 @@
     "name": "Innove",
     "url": "https://github.com/innoveit"
   },
-  "dependencies": {
+  "devDependencies": {
     "react-native": "0.52.0"
   }
 }
