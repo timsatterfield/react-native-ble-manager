@@ -77,9 +77,9 @@ class BleManager  {
     });
   }
 
-  connect(peripheralId) {
+  connect(peripheralId, autoReconnect) {
     return new Promise((fulfill, reject) => {
-      bleManager.connect(peripheralId, (error) => {
+      bleManager.connect(peripheralId, autoReconnect, (error) => {
         if (error) {
           reject(error);
         } else {
