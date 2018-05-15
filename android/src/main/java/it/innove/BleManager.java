@@ -47,6 +47,7 @@ class BleManager extends ReactContextBaseJavaModule implements ActivityEventList
 	private ScanManager scanManager;
 	private BondRequest bondRequest;
 	private BondRequest removeBondRequest;
+	private HashSet<String> pairedUUIDStrings = new HashSet<>();
 
 	// key is the MAC Address
 	public Map<String, Peripheral> peripherals = new LinkedHashMap<>();
@@ -89,17 +90,27 @@ class BleManager extends ReactContextBaseJavaModule implements ActivityEventList
 	}
 
 	@ReactMethod
-	public void start(ReadableMap options, Callback callback) {
+	public void start(ReadableMap options, ReadableArray savedUUIDStrings, Callback callback) {
 		Log.d(LOG_TAG, "start");
 		if (getBluetoothAdapter() == null) {
 			Log.d(LOG_TAG, "No bluetooth support");
 			callback.invoke("No bluetooth support");
 			return;
 		}
+
+		for(int i=0; i<savedUUIDStrings.size(); i++){
+			String uuid = savedUUIDStrings.getString(i);
+			Log.d(LOG_TAG, "parsing savedUUID: " + uuid);
+			pairedUUIDStrings.add(uuid);
+		}
+
 		boolean forceLegacy = false;
 		if (options.hasKey("forceLegacy")) {
 			forceLegacy = options.getBoolean("forceLegacy");
 		}
+
+		Log.d(LOG_TAG, "first start recover devices");
+		recoverDevices();
 
 		if (Build.VERSION.SDK_INT >= LOLLIPOP && !forceLegacy) {
 			scanManager = new LollipopScanManager(reactContext, this);
@@ -225,6 +236,7 @@ class BleManager extends ReactContextBaseJavaModule implements ActivityEventList
 			callback.invoke("Invalid peripheral uuid");
 			return;
 		}
+		pairedUUIDStrings.add(peripheralUUID);
 		peripheral.connect(callback, autoReconnect, getCurrentActivity());
 	}
 
@@ -233,6 +245,8 @@ class BleManager extends ReactContextBaseJavaModule implements ActivityEventList
 		Log.d(LOG_TAG, "Disconnect from: " + peripheralUUID);
 
 		Peripheral peripheral = peripherals.get(peripheralUUID);
+		pairedUUIDStrings.remove(peripheralUUID);
+
 		if (peripheral != null) {
 			peripheral.disconnect();
 			callback.invoke();
@@ -398,6 +412,7 @@ class BleManager extends ReactContextBaseJavaModule implements ActivityEventList
 						break;
 					case BluetoothAdapter.STATE_ON:
 						stringState = "on";
+						recoverDevices();
 						break;
 					case BluetoothAdapter.STATE_TURNING_ON:
 						stringState = "turning_on";
@@ -523,6 +538,21 @@ class BleManager extends ReactContextBaseJavaModule implements ActivityEventList
 		}
 	}
 
+	private void recoverDevices() {
+		Log.d(LOG_TAG, "recovering devices");
+		for(String uuid : pairedUUIDStrings) {
+			Peripheral peripheral = retrieveOrCreatePeripheral(uuid);
+
+			if (peripheral == null) {
+				Log.d(LOG_TAG, "device recovery: Invalid peripheral uuid");
+			} else {
+				Log.d(LOG_TAG, "device recovery: scheduling auto connect for: " + uuid);
+				pairedUUIDStrings.add(uuid);
+				peripheral.recover(getCurrentActivity());
+			}
+		}
+	}
+
 	private final static char[] hexArray = "0123456789ABCDEF".toCharArray();
 
 	public static String bytesToHex(byte[] bytes) {
@@ -566,9 +596,12 @@ class BleManager extends ReactContextBaseJavaModule implements ActivityEventList
 			if (peripheralUUID != null) {
 				peripheralUUID = peripheralUUID.toUpperCase();
 			}
+			Log.d(LOG_TAG, "is ble address valid?: " + peripheralUUID);
+			Log.d(LOG_TAG, "is ble address valid?: " + BluetoothAdapter.checkBluetoothAddress(peripheralUUID));
 			if (BluetoothAdapter.checkBluetoothAddress(peripheralUUID)) {
 				BluetoothDevice device = bluetoothAdapter.getRemoteDevice(peripheralUUID);
 				peripheral = new Peripheral(device, reactContext);
+
 				peripherals.put(peripheralUUID, peripheral);
 			}
 		}
