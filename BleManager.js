@@ -153,12 +153,12 @@ class BleManager  {
     bleManager.checkState();
   }
 
-  start(options) {
+  start(options, savedUUIDS) {
     return new Promise((fulfill, reject) => {
       if (options == null) {
         options = {};
       }
-      bleManager.start(options, (error) => {
+      bleManager.start(options, savedUUIDS, (error) => {
         if (error) {
           reject(error);
         } else {
