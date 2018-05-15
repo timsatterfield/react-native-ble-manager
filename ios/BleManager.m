@@ -273,13 +273,14 @@ RCT_EXPORT_METHOD(getConnectedPeripherals:(NSArray *)serviceUUIDStrings callback
     callback(@[[NSNull null], [NSArray arrayWithArray:foundedPeripherals]]);
 }
 
-RCT_EXPORT_METHOD(start:(NSDictionary *)options callback:(nonnull RCTResponseSenderBlock)callback)
+RCT_EXPORT_METHOD(start:(NSDictionary *)options savedUUIDStrings:(NSArray *)savedUUIDStrings callback:(nonnull RCTResponseSenderBlock)callback)
 {
     NSLog(@"BleManager initialized");
     NSMutableDictionary *initOptions = [[NSMutableDictionary alloc] init];
     
-    if ([[options allKeys] containsObject:@"pairedUUIDStrings"]){
-       // populate pariedUUIDStrings set
+    // populate pariedUUIDStrings set
+    for(NSString* uuid in savedUUIDStrings) {
+        [self.pairedUUIDStrings addObject:uuid];
     }
     
     if ([[options allKeys] containsObject:@"showAlert"]){
@@ -456,6 +457,10 @@ RCT_EXPORT_METHOD(checkState)
         connectCallback(@[errorStr]);
         [connectCallbacks removeObjectForKey:[peripheral uuidAsString]];
     }
+    
+    // Attempt to connect again
+    [central connectPeripheral:peripheral options:nil];
+
 }
 
 RCT_EXPORT_METHOD(write:(NSString *)deviceUUID serviceUUID:(NSString*)serviceUUID  characteristicUUID:(NSString*)characteristicUUID message:(NSArray*)message maxByteSize:(NSInteger)maxByteSize callback:(nonnull RCTResponseSenderBlock)callback)
@@ -900,6 +905,37 @@ RCT_EXPORT_METHOD(requestMTU:(NSString *)deviceUUID mtu:(NSInteger)mtu callback:
     if (hasListeners) {
         [self sendEventWithName:@"BleManagerDidUpdateState" body:@{@"state":stateName}];
     }
+    
+    if(central.state == CBCentralManagerStatePoweredOn) {
+        NSMutableArray* uuidArray = [[NSMutableArray alloc] init];
+        
+        for(NSString* uuid in self.pairedUUIDStrings) {
+            CBPeripheral* found = [self findPeripheralByUUID:uuid];
+            if(found) {
+                NSLog(@"found %@ in peripherals already", uuid);
+                if( [found state] != CBPeripheralStateConnected) {
+                    NSLog(@" - not connected, reconnecting");
+                    [central connectPeripheral:found options:nil];
+                }
+            }
+            else {
+                [uuidArray addObject:[[NSUUID alloc] initWithUUIDString:uuid]];
+            }
+        }
+        
+        NSLog(@"asking for %@ from known", uuidArray);
+        
+        NSArray* retrievedPeripherals = [central retrievePeripheralsWithIdentifiers:uuidArray];
+        
+        for(CBPeripheral* savedPeripheral in retrievedPeripherals) {
+            NSLog(@"retrieved saved %@", savedPeripheral);
+            savedPeripheral.delegate = self;
+            @synchronized(peripherals) {
+                [peripherals addObject:savedPeripheral];
+            }
+            [central connectPeripheral:savedPeripheral options:nil];
+        }
+    }
 }
 
 // expecting deviceUUID, serviceUUID, characteristicUUID in command.arguments
@@ -967,9 +1003,18 @@ RCT_EXPORT_METHOD(requestMTU:(NSString *)deviceUUID mtu:(NSInteger)mtu callback:
     return [NSString stringWithFormat:@"%@|%@", [peripheral uuidAsString], [characteristic UUID]];
 }
 
--(void)centralManager:(CBCentralManager *)central willRestoreState:(NSDictionary<NSString *,id> *)dict
+-(void)centralManager:(CBCentralManager *)central willRestoreState:(NSDictionary<NSString *,id> *)state
 {
     NSLog(@"centralManager willRestoreState");
+    NSArray* restoredPeripherals = [state objectForKey:CBCentralManagerRestoredStatePeripheralsKey];
+    
+    for(CBPeripheral* p in restoredPeripherals) {
+        NSLog(@"recovered peripheral %@", p.identifier);
+        p.delegate = self;
+        @synchronized(peripherals) {
+            [peripherals addObject:p];
+        }
+    }
 }
 
 +(CBCentralManager *)getCentralManager
