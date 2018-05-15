@@ -16,6 +16,7 @@ RCT_EXPORT_MODULE();
 
 @synthesize manager;
 @synthesize peripherals;
+@synthesize pairedUUIDStrings;
 @synthesize scanTimer;
 bool hasListeners;
 
@@ -24,6 +25,9 @@ bool hasListeners;
     
     if (self = [super init]) {
         peripherals = [NSMutableSet set];
+
+        pairedUUIDStrings = [NSMutableSet set];
+        
         connectCallbacks = [NSMutableDictionary new];
         retrieveServicesLatches = [NSMutableDictionary new];
         readCallbacks = [NSMutableDictionary new];
@@ -274,6 +278,10 @@ RCT_EXPORT_METHOD(start:(NSDictionary *)options callback:(nonnull RCTResponseSen
     NSLog(@"BleManager initialized");
     NSMutableDictionary *initOptions = [[NSMutableDictionary alloc] init];
     
+    if ([[options allKeys] containsObject:@"pairedUUIDStrings"]){
+       // populate pariedUUIDStrings set
+    }
+    
     if ([[options allKeys] containsObject:@"showAlert"]){
         [initOptions setObject:[NSNumber numberWithBool:[[options valueForKey:@"showAlert"] boolValue]]
                         forKey:CBCentralManagerOptionShowPowerAlertKey];
@@ -358,7 +366,7 @@ RCT_EXPORT_METHOD(stopScan:(nonnull RCTResponseSenderBlock)callback)
     }
 }
 
-RCT_EXPORT_METHOD(connect:(NSString *)peripheralUUID callback:(nonnull RCTResponseSenderBlock)callback)
+RCT_EXPORT_METHOD(connect:(NSString *)peripheralUUID autoReconnect:(BOOL)autoReconnect callback:(nonnull RCTResponseSenderBlock)callback)
 {
     NSLog(@"Connect");
     CBPeripheral *peripheral = [self findPeripheralByUUID:peripheralUUID];
@@ -383,6 +391,12 @@ RCT_EXPORT_METHOD(connect:(NSString *)peripheralUUID callback:(nonnull RCTRespon
     }
     if (peripheral) {
         NSLog(@"Connecting to peripheral with UUID : %@", peripheralUUID);
+        
+        if(autoReconnect) {
+            if(![self.pairedUUIDStrings containsObject:peripheralUUID]) {
+                [self.pairedUUIDStrings addObject:peripheralUUID];
+            }
+        }
         
         [connectCallbacks setObject:callback forKey:[peripheral uuidAsString]];
         [manager connectPeripheral:peripheral options:nil];
@@ -412,6 +426,8 @@ RCT_EXPORT_METHOD(disconnect:(NSString *)peripheralUUID  callback:(nonnull RCTRe
                 }
             }
         }
+        // If explictly disconnected, the peripheral will have to be found again as result of a scan
+        [self.pairedUUIDStrings removeObject:peripheralUUID];
         
         [manager cancelPeripheralConnection:peripheral];
         callback(@[]);
@@ -736,7 +752,13 @@ RCT_EXPORT_METHOD(requestMTU:(NSString *)deviceUUID mtu:(NSInteger)mtu callback:
     NSString *peripheralUUIDString = [peripheral uuidAsString];
 
     NSString *errorStr = [NSString stringWithFormat:@"Peripheral did disconnect: %@", peripheralUUIDString];
-
+    
+    // Schedule a reconnect if we did not manually disconnect.  User expects peripheral to auto connect
+    if ([self.pairedUUIDStrings containsObject:peripheralUUIDString]) {
+        NSLog(@"Peripheral still in auto pair list %@", peripheralUUIDString);
+        [central connectPeripheral:peripheral options:nil];
+    }
+    
     RCTResponseSenderBlock connectCallback = [connectCallbacks valueForKey:peripheralUUIDString];
     if (connectCallback) {
         connectCallback(@[errorStr]);
