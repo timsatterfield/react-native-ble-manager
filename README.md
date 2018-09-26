@@ -475,6 +475,26 @@ BleManager.retrieveServices('XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX')
   });  
 ```
 
+### refreshCache(peripheralId) [Android only]
+refreshes the peripheral's services and characteristics cache
+Returns a `Promise` object.
+
+__Arguments__
+- `peripheralId` - `String` - the id/mac address of the peripheral.
+
+__Examples__
+```js
+BleManager.refreshCache('XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX')
+  .then((peripheralInfo) => {
+    // Success code
+    console.log('cache refreshed!')
+  })
+  .cache((error) => {
+    console.error(error)
+  }); 
+```
+
+
 ### getConnectedPeripherals(serviceUUIDs)
 Return the connected peripherals.
 Returns a `Promise` object.
@@ -507,6 +527,23 @@ BleManager.createBond(peripheralId)
   })
 
 ```
+
+### removeBond(peripheralId) [Android only]
+Remove a paired device.
+Returns a `Promise` object.
+
+__Examples__
+```js
+BleManager.removeBond(peripheralId)
+  .then(() => {
+    console.log('removeBond success');
+  })
+  .catch(() => {
+    console.log('fail to remove the bond');
+  })
+
+```
+
 
 ### getBondedPeripherals() [Android only]
 Return the bonded peripherals.

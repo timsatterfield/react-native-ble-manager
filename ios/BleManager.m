@@ -116,16 +116,20 @@ bool hasListeners;
     NSString *key = [self keyForPeripheral: peripheral andCharacteristic:characteristic];
     
     if (characteristic.isNotifying) {
-        NSLog(@"Notification began on %@", characteristic.UUID);
         RCTResponseSenderBlock notificationCallback = [notificationCallbacks objectForKey:key];
-        notificationCallback(@[]);
-        [notificationCallbacks removeObjectForKey:key];
+        if (notificationCallback != nil) {
+          NSLog(@"Notification began on %@", characteristic.UUID);
+          notificationCallback(@[]);
+          [notificationCallbacks removeObjectForKey:key];
+        }
     } else {
         // Notification has stopped
-        NSLog(@"Notification ended on %@", characteristic.UUID);
         RCTResponseSenderBlock stopNotificationCallback = [stopNotificationCallbacks objectForKey:key];
-        stopNotificationCallback(@[]);
-        [stopNotificationCallbacks removeObjectForKey:key];
+        if (stopNotificationCallback != nil) {
+            NSLog(@"Notification ended on %@", characteristic.UUID);
+            stopNotificationCallback(@[]);
+            [stopNotificationCallbacks removeObjectForKey:key];
+        }
     }
 }
 
@@ -717,7 +721,7 @@ RCT_EXPORT_METHOD(requestMTU:(NSString *)deviceUUID mtu:(NSInteger)mtu callback:
     RCTResponseSenderBlock readRSSICallback = [readRSSICallbacks objectForKey: key];
     if (readRSSICallback) {
         readRSSICallback(@[[NSNull null], [NSNumber numberWithInteger:[rssi integerValue]]]);
-        [readRSSICallbacks removeObjectForKey:readRSSICallback];
+        [readRSSICallbacks removeObjectForKey:key];
     }
 }
 

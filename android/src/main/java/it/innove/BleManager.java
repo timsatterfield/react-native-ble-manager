@@ -174,7 +174,7 @@ class BleManager extends ReactContextBaseJavaModule implements ActivityEventList
 			return;
 		}
 		if (!getBluetoothAdapter().isEnabled()) {
-			callback.invoke("Bluetooth not enabled");
+			callback.invoke();
 			return;
 		}
 		scanManager.stopScan(callback);
@@ -329,6 +329,16 @@ class BleManager extends ReactContextBaseJavaModule implements ActivityEventList
 			callback.invoke("Peripheral not found", null);
 	}
 
+
+	@ReactMethod
+	public void refreshCache(String deviceUUID, Callback callback) {
+		Log.d(LOG_TAG, "Refershing cache for: " + deviceUUID);
+		Peripheral peripheral = peripherals.get(deviceUUID);
+		if (peripheral != null) {
+			peripheral.refreshCache(callback);
+		} else
+			callback.invoke("Peripheral not found");
+	}
 
 	@ReactMethod
 	public void readRSSI(String deviceUUID, Callback callback) {
