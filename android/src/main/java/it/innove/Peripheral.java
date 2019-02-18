@@ -139,23 +139,18 @@ public class Peripheral extends BluetoothGattCallback {
 		}
 	}
 
-	public void recover(Activity activity) {
-		BluetoothDevice device = getDevice();
-		this.autoReconnect = true;
-		gatt = device.connectGatt(activity, true, this);
-
-	}
-
-	public void disconnect() {
+	public void disconnect(boolean force) {
 		connectCallback = null;
 		connected = false;
 		if (gatt != null) {
 			try {
 				gatt.disconnect();
-				gatt.close();
-				gatt = null;
+				if (force) {
+					gatt.close();
+					gatt = null;
+					sendConnectionEvent(device, "BleManagerDisconnectPeripheral", BluetoothGatt.GATT_SUCCESS);
+				}
 				Log.d(BleManager.LOG_TAG, "Disconnect");
-				sendConnectionEvent(device, "BleManagerDisconnectPeripheral", BluetoothGatt.GATT_SUCCESS);
 			} catch (Exception e) {
 				sendConnectionEvent(device, "BleManagerDisconnectPeripheral", BluetoothGatt.GATT_FAILURE);
 				Log.d(BleManager.LOG_TAG, "Error on disconnect", e);

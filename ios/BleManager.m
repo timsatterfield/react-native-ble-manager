@@ -417,7 +417,7 @@ RCT_EXPORT_METHOD(connect:(NSString *)peripheralUUID autoReconnect:(BOOL)autoRec
     }
 }
 
-RCT_EXPORT_METHOD(disconnect:(NSString *)peripheralUUID  callback:(nonnull RCTResponseSenderBlock)callback)
+RCT_EXPORT_METHOD(disconnect:(NSString *)peripheralUUID force:(BOOL)force callback:(nonnull RCTResponseSenderBlock)callback)
 {
     CBPeripheral *peripheral = [self findPeripheralByUUID:peripheralUUID];
     if (peripheral) {
