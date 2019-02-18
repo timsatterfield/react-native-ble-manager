@@ -139,6 +139,13 @@ public class Peripheral extends BluetoothGattCallback {
 		}
 	}
 
+	public void recover(Activity activity) {
+		BluetoothDevice device = getDevice();
+		this.autoReconnect = true;
+		gatt = device.connectGatt(activity, true, this);
+
+	}
+
 	public void disconnect(boolean force) {
 		connectCallback = null;
 		connected = false;
