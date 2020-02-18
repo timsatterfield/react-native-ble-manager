@@ -18,6 +18,7 @@ declare module 'react-native-ble-manager' {
 	export interface StartOptions {
 		showAlert?: boolean
 		restoreIdentifierKey?: string
+		queueIdentifierKey?: string
 		forceLegacy?: boolean
 	}
 
@@ -27,7 +28,8 @@ declare module 'react-native-ble-manager' {
 		numberOfMatches?: number;
 		matchMode?: number;
 		scanMode?: number;
-    	}
+		reportDelay?: number;
+	}
     
 	export function scan(serviceUUIDs: string[], seconds: number, allowDuplicates?: boolean, options?: ScanOptions): Promise<void>;
 	export function stopScan(): Promise<void>;

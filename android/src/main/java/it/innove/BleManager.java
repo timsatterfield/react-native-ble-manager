@@ -11,7 +11,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
-import android.support.annotation.Nullable;
+import androidx.annotation.Nullable;
 import android.util.Log;
 
 import com.facebook.react.bridge.ActivityEventListener;
@@ -209,8 +209,10 @@ class BleManager extends ReactContextBaseJavaModule implements ActivityEventList
 		Peripheral peripheral = retrieveOrCreatePeripheral(peripheralUUID);
 		if (peripheral == null) {
 			callback.invoke("Invalid peripheral uuid");
+			return;
 		} else if (bondRequest != null) {
 			callback.invoke("Only allow one bond request at a time");
+			return;
 		} else if (peripheral.getDevice().createBond()) {
 			Log.d(LOG_TAG, "Request bond successful for: " + peripheralUUID);
 			bondRequest = new BondRequest(peripheralUUID, callback); // request bond success, waiting for boradcast
@@ -367,7 +369,12 @@ class BleManager extends ReactContextBaseJavaModule implements ActivityEventList
 		String address = device.getAddress();
 		synchronized (peripherals) {
 			if (!peripherals.containsKey(address)) {
-				Peripheral peripheral = new Peripheral(device, reactContext);
+				Peripheral peripheral;
+                if (Build.VERSION.SDK_INT >= LOLLIPOP && !forceLegacy) {
+                    peripheral = new LollipopPeripheral(device, reactContext);
+                } else {
+                    peripheral = new Peripheral(device, reactContext);
+                }
 				peripherals.put(device.getAddress(), peripheral);
 			}
 		}
@@ -473,7 +480,12 @@ class BleManager extends ReactContextBaseJavaModule implements ActivityEventList
 				}
 				
 				if (bondState == BluetoothDevice.BOND_BONDED) {
-					Peripheral peripheral = new Peripheral(device, reactContext);
+					Peripheral peripheral;
+                    if (Build.VERSION.SDK_INT >= LOLLIPOP && !forceLegacy) {
+                        peripheral = new LollipopPeripheral(device, reactContext);
+                    } else {
+                        peripheral = new Peripheral(device, reactContext);
+                    }
 					WritableMap map = peripheral.asWritableMap();
 					sendEvent("BleManagerPeripheralDidBond", map);
 				}
@@ -546,7 +558,12 @@ class BleManager extends ReactContextBaseJavaModule implements ActivityEventList
 		WritableArray map = Arguments.createArray();
 		Set<BluetoothDevice> deviceSet = getBluetoothAdapter().getBondedDevices();
 		for (BluetoothDevice device : deviceSet) {
-			Peripheral peripheral = new Peripheral(device, reactContext);
+			Peripheral peripheral;
+            if (Build.VERSION.SDK_INT >= LOLLIPOP && !forceLegacy) {
+                peripheral = new LollipopPeripheral(device, reactContext);
+            } else {
+                peripheral = new Peripheral(device, reactContext);
+            }
 			WritableMap jsonBundle = peripheral.asWritableMap();
 			map.pushMap(jsonBundle);
 		}

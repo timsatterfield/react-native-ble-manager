@@ -8,7 +8,7 @@ import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.os.Build;
 import android.os.ParcelUuid;
-import android.support.annotation.RequiresApi;
+import androidx.annotation.RequiresApi;
 import android.util.Log;
 import com.facebook.react.bridge.*;
 
@@ -43,6 +43,10 @@ public class LollipopScanManager extends ScanManager {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             scanSettingsBuilder.setNumOfMatches(options.getInt("numberOfMatches"));
             scanSettingsBuilder.setMatchMode(options.getInt("matchMode"));
+        }
+
+        if (!options.isNull("reportDelay")) {
+            scanSettingsBuilder.setReportDelay(options.getInt("reportDelay"));
         }
         
         if (serviceUUIDs.size() > 0) {
